@@ -9,20 +9,74 @@ app.use(cors());
 
 const users = [];
 
+/**
+ * Recebe o username pelo header do request e valida se o usuário existe.
+ */
 function checksExistsUserAccount(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers;
+  const user = users.find((user) => user.username == username);
+
+  if (!user) {
+      return response.status(404).json({error: "User not found."})
+  }
+
+  request.user = user;
+
+  return next();
 }
 
+/**
+ * Usuário no plano grátis só pode adicionar até 10 todos.
+ * Caso seja atingido o limite e o usuário tentar adicionar mais todos,
+ * ele será impedido, a menos que tenha o plano Pro
+ */
 function checksCreateTodosUserAvailability(request, response, next) {
-  // Complete aqui
+  const { user } = request;
+  const isPro = user.pro;
+  const canAddToDo = user.todos.length < 10;
+
+  if (!isPro & !canAddToDo) {
+    return response.status(403).json({error: "Todo limits achieved."})
+  }
+
+  return next();
 }
 
 function checksTodoExists(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers;
+  const { id } = request.params;
+
+  const user = users.find((user) => user.username == username);
+  if (!user) {
+    return response.status(404).json({error: "User not found."})
+  }
+
+  const todo = user.todos.find((todo) => todo.id === id);
+  // Regular expression to check if string is a valid UUID
+  const regexExp = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
+  const validId = regexExp.test(id);
+
+  if(validId) {
+    if (!todo) {
+      return response.status(404).json({error: "Todo not found."})
+    }
+    request.user = user;
+    request.todo = todo;
+    return next();
+  }
+  return response.status(400).json({error: "Todo id not valid."})
 }
 
 function findUserById(request, response, next) {
-  // Complete aqui
+  const { id } = request.params;
+  const user = users.find((user) => user.id === id);
+  if (!user) {
+      return response.status(404).json({error: "User not found."})
+  }
+
+  request.user = user;
+
+  return next();
 }
 
 app.post('/users', (request, response) => {
